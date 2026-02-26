@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ScrollDialog from "./ScrollDialog";
 import "./DealQuote.css";
 const ZOHO = window.ZOHO || {};
 
@@ -53,37 +54,19 @@ export default function DealQuote() {
         per_page: 200,
       }).then(function (quoteData) {
         setQuoteData(quoteData["data"]);
-        console.log(quoteData["data"]);
       });
     }
   }, [recordData, zohoLoaded, recordId, moduleName]);
-
-  // const handleDealUpdate = (e) => {
-  //   e.preventDefault();
-  //   const updatedData = {
-  //     Deal_Name: document.getElementById("deal_name").value,
-  //     Amount: document.getElementById("amount").value,
-  //     Contact_Phone: document.getElementById("phone_number").value,
-  //     Email: document.getElementById("email").value,
-  //   };
-  //   var config = {
-  //     Entity: moduleName,
-  //     APIData: {
-  //       ...updatedData,
-  //       id: recordId,
-  //     },
-  //     Trigger: ["workflow"],
-  //   };
-  //   ZOHO.CRM.API.updateRecord(config)
-  //     .then(function (data) {
-  //       console.log(data);
-  //       alert("Record Updated Successfully");
-  //       window.location.reload();
-  //     })
-  //     .catch(function (error) {
-  //       console.log(error);
-  //     });
-  // };
+  useEffect(() => {
+    if (recordData) {
+      ZOHO.CRM.META.getLayouts({
+        Entity: "Quotes",
+        LayoutId: "4728790000000091023",
+      }).then(function (data) {
+        console.log(data);
+      });
+    }
+  }, [recordData]);
   const verifyEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -134,6 +117,9 @@ export default function DealQuote() {
     console.log(quoteData);
     return <div>Loading quotes...</div>;
   }
+  const accountId = recordData["data"][0]["Account_Name"]?.id || "";
+  const dealName = recordData["data"][0]["Deal_Name"] || "";
+  const accountName = recordData["data"][0]["Account_Name"]?.name || "";
   return (
     <div className="container">
       <div className=" card">
@@ -214,7 +200,7 @@ export default function DealQuote() {
                 type="text"
                 className="form-control"
                 id="amount"
-                defaultValue={`${recordData["data"][0]["Amount"]}`}
+                defaultValue={recordData["data"][0]["Amount"]}
                 required
                 disabled={disabled}
               ></input>
@@ -254,11 +240,11 @@ export default function DealQuote() {
       <nav className="navbar bg-success mt-3 rounded-2">
         <div className="container-fluid">
           <a className="navbar-brand text-white">Related Quotes</a>
-          <form className="d-flex" role="search">
-            <button className="btn btn-light" type="submit">
-              ➕ Create Quote
-            </button>
-          </form>
+          <ScrollDialog
+            accountId={accountId}
+            dealName={dealName}
+            accountName={accountName}
+          />
         </div>
       </nav>
       <table border={1} className="w-100 table-responsive">
