@@ -10,6 +10,13 @@ export default function DealQuote() {
   const [recordData, setRecordData] = useState(null);
   const [quoteData, setQuoteData] = useState(null);
   const [disabled, setDisabled] = useState(true);
+  const [dealName, setDealName] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [email, setEmail] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [amount, setAmount] = useState("");
   useEffect(() => {
     ZOHO.embeddedApp.on("PageLoad", function (data) {
       setRecordId(data["EntityId"][0]);
@@ -46,6 +53,13 @@ export default function DealQuote() {
 
   useEffect(() => {
     if (recordData) {
+      setDealName(recordData["data"][0]["Deal_Name"]);
+      setAccountId(recordData["data"][0]["Account_Name"]?.id || "");
+      setAccountName(recordData["data"][0]["Account_Name"]?.name || "");
+      setEmail(recordData["data"][0]["Email"]);
+      setContactName(recordData["data"][0]["Contact_Name"]["name"]);
+      setContactPhone(recordData["data"][0]["Contact_Phone"]);
+      setAmount(recordData["data"][0]["Amount"]);
       ZOHO.CRM.API.getRelatedRecords({
         Entity: "Deals",
         RecordID: recordData["data"][0]["id"],
@@ -73,13 +87,12 @@ export default function DealQuote() {
   };
   const handleDealUpdate = (e) => {
     e.preventDefault();
-    const events = e.target.elements;
     const updatedData = {
-      Deal_Name: events.deal_name.value,
-      Amount: events.amount.value,
-      // Contact_Name: events.contact_name.value,
-      Contact_Phone: events.phone_number.value,
-      Email: events.email.value,
+      Deal_Name: dealName,
+      Amount: amount,
+      // Contact_Name: contactName,
+      Contact_Phone: contactPhone,
+      Email: email,
       // Stage: events.stage.value,
     };
     if (!verifyEmail(updatedData.Email)) {
@@ -92,19 +105,39 @@ export default function DealQuote() {
         ...updatedData,
         id: recordId,
       },
-      Trigger: ["workflow"],
+      Trigger: [],
     };
     ZOHO.CRM.API.updateRecord(config)
       .then(function (data) {
         console.log(data);
         alert("Record Updated Successfully");
-        window.location.reload();
       })
       .catch(function (error) {
         console.log(error);
       });
     return;
   };
+  const handleDelete = async (quoteId, quoteName) => {
+    const confirmDelete = window.confirm(
+      `Are you sure want to delete the ${quoteName}`,
+    );
+    if (!confirmDelete) {
+      return;
+    }
+    try {
+      const response = await ZOHO.CRM.API.deleteRecord({
+        Entity: "Quotes",
+        RecordID: quoteId,
+      });
+      console.log(response);
+      alert("Quote Deleted Successfully!");
+      const data_index = quoteData.findIndex((item) => item.id === quoteId);
+      setQuoteData(quoteData.splice(data_index, 1));
+    } catch (error) {
+      console.log("Error fetching quotes", error);
+    }
+  };
+
   if (!zohoLoaded) {
     console.log(zohoLoaded);
     return <div>Loading zoho...</div>;
@@ -117,15 +150,16 @@ export default function DealQuote() {
     console.log(quoteData);
     return <div>Loading quotes...</div>;
   }
-  const accountId = recordData["data"][0]["Account_Name"]?.id || "";
-  const dealName = recordData["data"][0]["Deal_Name"] || "";
-  const accountName = recordData["data"][0]["Account_Name"]?.name || "";
   return (
     <div className="container">
       <div className=" card">
         <h5 className="card-header">Deal Information</h5>
         <div className="card-body">
           <form className="row g-3" onSubmit={handleDealUpdate}>
+            <div className="col-md-12">
+              <label className="form-label">Data Show</label>
+              <p className="border p-2">{`${dealName} || ${email} || ${contactPhone} || ${amount}`}</p>
+            </div>
             <div className="col-md-4">
               <label className="form-label">Deal Name</label>
               <input
@@ -133,8 +167,11 @@ export default function DealQuote() {
                 type="text"
                 className="form-control"
                 id="deal_name"
-                defaultValue={recordData["data"][0]["Deal_Name"]}
+                defaultValue={dealName}
                 disabled={disabled}
+                onChange={(e) => {
+                  setDealName(e.target.value);
+                }}
               ></input>
             </div>
             <div className="col-md-4">
@@ -155,7 +192,8 @@ export default function DealQuote() {
                   type="email"
                   className="form-control"
                   id="email"
-                  defaultValue={recordData["data"][0]["Email"]}
+                  defaultValue={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={disabled}
                 ></input>
               </div>
@@ -166,7 +204,7 @@ export default function DealQuote() {
                 type="text"
                 className="form-control"
                 id="contact_name"
-                defaultValue={recordData["data"][0]["Contact_Name"]["name"]}
+                defaultValue={contactName}
                 disabled
               ></input>
             </div>
@@ -176,7 +214,10 @@ export default function DealQuote() {
                 type="text"
                 className="form-control"
                 id="phone_number"
-                defaultValue={recordData["data"][0]["Contact_Phone"]}
+                defaultValue={contactPhone}
+                onChange={(e) => {
+                  setContactPhone(e.target.value);
+                }}
                 disabled={disabled}
               ></input>
             </div>
@@ -200,7 +241,10 @@ export default function DealQuote() {
                 type="text"
                 className="form-control"
                 id="amount"
-                defaultValue={recordData["data"][0]["Amount"]}
+                defaultValue={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                }}
                 required
                 disabled={disabled}
               ></input>
@@ -247,13 +291,13 @@ export default function DealQuote() {
           />
         </div>
       </nav>
-      <table border={1} className="w-100 table-responsive">
+      <table border={1} className="w-100 table-responsive my-3">
         <thead>
           <tr>
             <th>Quote Name</th>
             <th>Quote </th>
             <th>Valid Till</th>
-            <th>Grand Total</th>
+            <th>Grand Total($)</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -264,10 +308,17 @@ export default function DealQuote() {
                 <td>{quote.Subject}</td>
                 <td>{quote.Quote_Number}</td>
                 <td>{quote.Valid_Till}</td>
-                <td>{`$${quote.Grand_Total}`}</td>
+                <td>{quote.Grand_Total}</td>
                 <td>
                   <button type="submit">✏️</button>
-                  <button type="submit">❌</button>
+                  <button
+                    type="submit"
+                    onClick={() => {
+                      handleDelete(quote.id, quote.Subject);
+                    }}
+                  >
+                    ❌
+                  </button>
                 </td>
               </tr>
             ))
