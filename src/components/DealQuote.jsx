@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ScrollDialog from "./ScrollDialog";
 import "./DealQuote.css";
-const ZOHO = window.ZOHO || {};
+const ZOHO = window.ZOHO;
 
 export default function DealQuote() {
   const [zohoLoaded, setZohoLoaded] = useState(false);
@@ -11,12 +11,14 @@ export default function DealQuote() {
   const [quoteData, setQuoteData] = useState(null);
   const [disabled, setDisabled] = useState(true);
   const [dealName, setDealName] = useState("");
+  const [dealId, setDealId] = useState("");
   const [accountId, setAccountId] = useState("");
   const [accountName, setAccountName] = useState("");
   const [email, setEmail] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [amount, setAmount] = useState("");
+  const [products, setProducts] = useState(null);
   useEffect(() => {
     ZOHO.embeddedApp.on("PageLoad", function (data) {
       setRecordId(data["EntityId"][0]);
@@ -54,6 +56,7 @@ export default function DealQuote() {
   useEffect(() => {
     if (recordData) {
       setDealName(recordData["data"][0]["Deal_Name"]);
+      setDealId(recordData["data"][0]["id"]);
       setAccountId(recordData["data"][0]["Account_Name"]?.id || "");
       setAccountName(recordData["data"][0]["Account_Name"]?.name || "");
       setEmail(recordData["data"][0]["Email"]);
@@ -81,6 +84,18 @@ export default function DealQuote() {
       });
     }
   }, [recordData]);
+  useEffect(() => {
+    if (zohoLoaded) {
+      ZOHO.CRM.API.getAllRecords({
+        Entity: "Products",
+        page: 1,
+        per_page: 200,
+      }).then(function (data) {
+        console.log(data.data);
+        setProducts(data.data);
+      });
+    }
+  }, [zohoLoaded]);
   const verifyEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -130,9 +145,10 @@ export default function DealQuote() {
         RecordID: quoteId,
       });
       console.log(response);
-      alert("Quote Deleted Successfully!");
       const data_index = quoteData.findIndex((item) => item.id === quoteId);
-      setQuoteData(quoteData.splice(data_index, 1));
+      quoteData.splice(data_index, 1);
+      alert("Quote Deleted Successfully!");
+      setQuoteData(quoteData);
     } catch (error) {
       console.log("Error fetching quotes", error);
     }
@@ -145,10 +161,6 @@ export default function DealQuote() {
   if (!recordData) {
     console.log(recordData);
     return <div>Loading record data...</div>;
-  }
-  if (!quoteData) {
-    console.log(quoteData);
-    return <div>Loading quotes...</div>;
   }
   return (
     <div className="container">
@@ -288,6 +300,8 @@ export default function DealQuote() {
             accountId={accountId}
             dealName={dealName}
             accountName={accountName}
+            products={products}
+            dealId={dealId}
           />
         </div>
       </nav>

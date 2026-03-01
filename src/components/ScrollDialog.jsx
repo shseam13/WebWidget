@@ -5,9 +5,27 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
+import TextField from "@mui/material/TextField";
+import Autocomplete from "@mui/material/Autocomplete";
+const ZOHO = window.ZOHO;
 
-export default function ScrollDialog({ accountId, dealName, accountName }) {
+export default function ScrollDialog({
+  accountId,
+  dealName,
+  dealId,
+  accountName,
+  products,
+}) {
   const [open, setOpen] = React.useState(false);
+  const [rows, setRows] = React.useState([{ productId: "", quantity: 1 }]);
+  const [formData, setFormData] = React.useState({
+    Subject: "",
+    Quote_Stage: "Draft",
+    Valid_Till: "",
+    Account_Name: accountId,
+    Deal_Name: dealId,
+    Quoted_Items: null,
+  });
   const scroll = "paper";
   const handleClickOpen = (accountId) => () => {
     if (accountId !== "") {
@@ -30,6 +48,63 @@ export default function ScrollDialog({ accountId, dealName, accountName }) {
       }
     }
   }, [open]);
+  const addRow = (e) => {
+    e.preventDefault();
+    setRows([...rows, { productId: "", quantity: 1 }]);
+  };
+  const deleteRow = (e, index) => {
+    e.preventDefault();
+    if (rows.length > 1) {
+      const newRows = rows.filter((_, i) => i !== index);
+      setRows(newRows);
+    } else {
+      alert("A quote must have at least one product.");
+    }
+  };
+  const updateRow = (index, field, value) => {
+    const newRows = [...rows];
+    newRows[index][field] = value;
+    setRows(newRows);
+  };
+  const handleCreateQuote = async (e) => {
+    e.preventDefault();
+    const quotedItems = rows
+      .filter((row) => row.productId !== "")
+      .map((row) => ({
+        product: { id: row.productId },
+        Quantity: row.quantity,
+      }));
+
+    if (quotedItems.length === 0) {
+      alert("Please select at least one product.");
+      return;
+    }
+
+    const recordData = {
+      ...formData,
+      Account_Name: accountId,
+      Deal_Name: dealId,
+      Quoted_Items: quotedItems,
+    };
+    console.log(recordData);
+    // try {
+    //   const response = await ZOHO.CRM.API.insertRecord({
+    //     Entity: "Quotes",
+    //     APIData: recordData,
+    //     Trigger: ["workflow"],
+    //   });
+
+    //   if (response.data && response.data[0].code === "SUCCESS") {
+    //     alert("Quote Created Successfully!");
+    //     handleClose();
+    //   } else {
+    //     console.error("Error from Zoho:", response);
+    //     alert("Failed to create quote. Check console for details.");
+    //   }
+    // } catch (error) {
+    //   console.error("API Error:", error);
+    // }
+  };
   return (
     <React.Fragment>
       <button className="btn btn-light" onClick={handleClickOpen(accountId)}>
@@ -50,22 +125,41 @@ export default function ScrollDialog({ accountId, dealName, accountName }) {
               <input
                 type="text"
                 className="form-control"
-                placeholder="কোটা নাম এখানে লিখো"
+                placeholder="Write quote subject here"
+                id="quote_subject"
                 required
+                defaultValue={formData.Subject}
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, Subject: e.target.value }));
+                }}
               />
             </div>
             <div className="col-md-6">
-              <label for="inputState" className="form-label">
-                Quote Stage
-              </label>
-              <select id="inputState" className="form-select">
-                <option defaultValue>Draft</option>
+              <label className="form-label">Quote Stage</label>
+              <select
+                className="form-select"
+                defaultValue={formData.Quote_Stage}
+              >
+                <option defaultValue disabled>
+                  Draft
+                </option>
                 <option disabled>...</option>
               </select>
             </div>
             <div className="col-md-6">
               <label className="form-label">Valid Until</label>
-              <input type="date" className="form-control" />
+              <input
+                type="date"
+                className="form-control"
+                id="validity_date"
+                defaultValue={formData.Valid_Till}
+                onChange={(e) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    Valid_Till: e.target.value,
+                  }));
+                }}
+              />
             </div>
             <div className="col-md-6">
               <label className="form-label">Deal Name</label>
@@ -86,66 +180,71 @@ export default function ScrollDialog({ accountId, dealName, accountName }) {
               />
             </div>
 
-            <div className="col-12">
-              <label for="inputAddress" className="form-label">
-                Address
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                id="inputAddress"
-                placeholder="1234 Main St"
-              />
-            </div>
-            <div className="col-12">
-              <label for="inputAddress2" className="form-label">
-                Address 2
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                id="inputAddress2"
-                placeholder="Apartment, studio, or floor"
-              />
-            </div>
-            <div className="col-md-6">
-              <label for="inputCity" className="form-label">
-                City
-              </label>
-              <input type="text" className="form-control" id="inputCity" />
-            </div>
-            <div className="col-md-4">
-              <label for="inputState" className="form-label">
-                State
-              </label>
-              <select id="inputState" className="form-select">
-                <option defaultValue>Choose...</option>
-                <option>...</option>
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label for="inputZip" className="form-label">
-                Zip
-              </label>
-              <input type="text" className="form-control" id="inputZip" />
-            </div>
-            <div className="col-12">
-              <div className="form-check">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="gridCheck"
-                />
-                <label className="form-check-label" for="gridCheck">
-                  Check me out
-                </label>
-              </div>
-            </div>
-            <div className="col-12">
-              <button type="submit" className="btn btn-primary">
-                Create Quote
+            <table>
+              <thead>
+                <tr>
+                  <th className="col-md-9">Product</th>
+                  <th className="col-md-2">Quantity</th>
+                  <th className="col-md-1">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={index}>
+                    <td>
+                      <select
+                        className="form-select"
+                        value={row.productId}
+                        onChange={(e) =>
+                          updateRow(index, "productId", e.target.value)
+                        }
+                      >
+                        <option value="">Select Product</option>
+                        {products.map((prod) => (
+                          <option key={prod.id} value={prod.id}>
+                            {prod.Product_Name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={row.quantity}
+                        min={1}
+                        onChange={(e) =>
+                          updateRow(index, "quantity", Number(e.target.value))
+                        }
+                      />
+                    </td>
+                    <td>
+                      <button
+                        className="btn"
+                        type="button"
+                        onClick={(e) => deleteRow(e, index)}
+                      >
+                        ❌
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="col-6">
+              <button className="btn btn-success" onClick={addRow}>
+                +Add row
               </button>
             </div>
+            <button
+              type="submit"
+              className="btn btn-primary btn-block"
+              onClick={(e) => {
+                handleCreateQuote(e);
+              }}
+            >
+              Create Quote
+            </button>
           </form>
         </DialogContent>
         <DialogActions className="m-2">
@@ -161,3 +260,10 @@ export default function ScrollDialog({ accountId, dealName, accountName }) {
     </React.Fragment>
   );
 }
+/*
+
+
+
+
+
+*/
