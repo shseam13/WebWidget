@@ -19,6 +19,7 @@ export default function DealQuote() {
   const [contactPhone, setContactPhone] = useState("");
   const [amount, setAmount] = useState("");
   const [products, setProducts] = useState(null);
+  const [disabledQuote, setDisabledQuote] = useState(true);
   useEffect(() => {
     ZOHO.embeddedApp.on("PageLoad", function (data) {
       setRecordId(data["EntityId"][0]);
@@ -309,7 +310,7 @@ export default function DealQuote() {
         <thead>
           <tr>
             <th>Quote Name</th>
-            <th>Quote </th>
+            <th>Quote ID</th>
             <th>Valid Till</th>
             <th>Grand Total($)</th>
             <th>Action</th>
@@ -319,14 +320,34 @@ export default function DealQuote() {
           {quoteData && quoteData.length > 0 ? (
             quoteData.map((quote) => (
               <tr key={quote.id}>
-                <td>{quote.Subject}</td>
+                <td>
+                  <input
+                    type="text"
+                    style={{ color: "black" }}
+                    defaultValue={quote.Subject}
+                    disabled={disabledQuote}
+                  />
+                </td>
                 <td>{quote.Quote_Number}</td>
-                <td>{quote.Valid_Till}</td>
+                <td>
+                  <input
+                    type="date"
+                    defaultValue={quote.Valid_Till}
+                    disabled={disabledQuote}
+                  />
+                </td>
                 <td>{quote.Grand_Total}</td>
                 <td>
-                  <button type="submit">✏️</button>
                   <button
-                    type="submit"
+                    className="btn btn-outline-success me-2"
+                    onClick={() => {
+                      setDisabledQuote(!disabledQuote);
+                    }}
+                  >
+                    {disabledQuote ? "Edit" : "Cancel"}
+                  </button>
+                  <button
+                    className="btn btn-outline-danger"
                     onClick={() => {
                       handleDelete(quote.id, quote.Subject);
                     }}

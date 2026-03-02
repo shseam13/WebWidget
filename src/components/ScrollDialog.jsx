@@ -24,7 +24,6 @@ export default function ScrollDialog({
     Valid_Till: "",
     Account_Name: accountId,
     Deal_Name: dealId,
-    Quoted_Items: null,
   });
   const scroll = "paper";
   const handleClickOpen = (accountId) => () => {
@@ -35,7 +34,8 @@ export default function ScrollDialog({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = (code) => {
+    code === 200 ? window.location.reload() : "";
     setOpen(false);
   };
 
@@ -63,6 +63,7 @@ export default function ScrollDialog({
   };
   const updateRow = (index, field, value) => {
     const newRows = [...rows];
+    console.log(index, field);
     newRows[index][field] = value;
     setRows(newRows);
   };
@@ -72,38 +73,41 @@ export default function ScrollDialog({
       .filter((row) => row.productId !== "")
       .map((row) => ({
         product: { id: row.productId },
-        Quantity: row.quantity,
+        quantity: row.quantity,
       }));
 
     if (quotedItems.length === 0) {
       alert("Please select at least one product.");
       return;
     }
-
+    if (formData.Subject === "") {
+      window.alert("Please insert quote subject");
+      return;
+    }
     const recordData = {
       ...formData,
       Account_Name: accountId,
       Deal_Name: dealId,
-      Quoted_Items: quotedItems,
+      Product_Details: quotedItems,
     };
-    console.log(recordData);
-    // try {
-    //   const response = await ZOHO.CRM.API.insertRecord({
-    //     Entity: "Quotes",
-    //     APIData: recordData,
-    //     Trigger: ["workflow"],
-    //   });
 
-    //   if (response.data && response.data[0].code === "SUCCESS") {
-    //     alert("Quote Created Successfully!");
-    //     handleClose();
-    //   } else {
-    //     console.error("Error from Zoho:", response);
-    //     alert("Failed to create quote. Check console for details.");
-    //   }
-    // } catch (error) {
-    //   console.error("API Error:", error);
-    // }
+    try {
+      const response = await ZOHO.CRM.API.insertRecord({
+        Entity: "Quotes",
+        APIData: recordData,
+        Trigger: [],
+      });
+      if (response.data && response.data[0].code === "SUCCESS") {
+        alert("Quote Created Successfully!");
+        handleClose(200);
+      } else {
+        console.error("Error from Zoho:", response);
+        alert("Failed to create quote. Check console for details.");
+      }
+    } catch (error) {
+      alert("Something went wrong please reload the crm and try again");
+      console.error("API Error:", error);
+    }
   };
   return (
     <React.Fragment>
@@ -194,10 +198,9 @@ export default function ScrollDialog({
                     <td>
                       <select
                         className="form-select"
-                        value={row.productId}
-                        onChange={(e) =>
-                          updateRow(index, "productId", e.target.value)
-                        }
+                        onChange={(e) => {
+                          updateRow(index, "productId", e.target.value);
+                        }}
                       >
                         <option value="">Select Product</option>
                         {products.map((prod) => (
@@ -236,24 +239,24 @@ export default function ScrollDialog({
                 +Add row
               </button>
             </div>
-            <button
-              type="submit"
-              className="btn btn-primary btn-block"
-              onClick={(e) => {
-                handleCreateQuote(e);
-              }}
-            >
-              Create Quote
-            </button>
           </form>
         </DialogContent>
         <DialogActions className="m-2">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            onClick={(e) => {
+              handleCreateQuote(e);
+            }}
+          >
+            Create Quote
+          </button>
           <button
             type="button"
             className="btn btn-danger"
             onClick={handleClose}
           >
-            Close & Refresh
+            Close
           </button>
         </DialogActions>
       </Dialog>
