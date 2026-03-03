@@ -19,7 +19,9 @@ export default function DealQuote() {
   const [contactPhone, setContactPhone] = useState("");
   const [amount, setAmount] = useState("");
   const [products, setProducts] = useState(null);
-  const [disabledQuote, setDisabledQuote] = useState(true);
+  const [disabledRows, setDisabledRows] = useState({});
+  const [quoteSubject, setQuoteSubject] = useState("");
+  const [validDate, setValidDate] = useState("");
   useEffect(() => {
     ZOHO.embeddedApp.on("PageLoad", function (data) {
       setRecordId(data["EntityId"][0]);
@@ -71,6 +73,7 @@ export default function DealQuote() {
         page: 1,
         per_page: 200,
       }).then(function (quoteData) {
+        console.log(quoteData);
         setQuoteData(quoteData["data"]);
       });
     }
@@ -153,6 +156,42 @@ export default function DealQuote() {
     } catch (error) {
       console.log("Error fetching quotes", error);
     }
+  };
+  const handleSave = async (quoteId, quoteName, validDate) => {
+    const confirmSave = window.confirm(
+      `Sounds good? ${validDate} & ${quoteName}`,
+    );
+    if (!confirmSave) {
+      return;
+    }
+    console.log(quoteId, quoteName, validDate);
+    const updatedData = {
+      Subject: quoteName,
+      Valid_Till: validDate,
+    };
+    var config = {
+      Entity: moduleName,
+      APIData: {
+        ...updatedData,
+        id: quoteId,
+      },
+      Trigger: [],
+    };
+    console.log(config);
+    const response = await ZOHO.CRM.API.updateRecord(config)
+      .then(function (data) {
+        console.log(data);
+        alert("Record Updated Successfully");
+        setDisabledRows((prev) => ({
+          ...prev,
+          [quoteId]: !(disabledRows[quoteId] ?? true),
+        }));
+        console.log(response);
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+    return;
   };
 
   if (!zohoLoaded) {
@@ -310,7 +349,8 @@ export default function DealQuote() {
         <thead>
           <tr>
             <th>Quote Name</th>
-            <th>Quote ID</th>
+            <th>Quote Owner</th>
+            <th>Quote Stage</th>
             <th>Valid Till</th>
             <th>Grand Total($)</th>
             <th>Action</th>
@@ -325,34 +365,49 @@ export default function DealQuote() {
                     type="text"
                     style={{ color: "black" }}
                     defaultValue={quote.Subject}
-                    disabled={disabledQuote}
+                    onChange={(e) => {
+                      setQuoteSubject(e.target.value);
+                    }}
+                    disabled={disabledRows[quote.id] ?? true}
                   />
                 </td>
-                <td>{quote.Quote_Number}</td>
+                <td>{quote.Owner.name}</td>
+                <td>{quote.Quote_Stage}</td>
                 <td>
                   <input
                     type="date"
                     defaultValue={quote.Valid_Till}
-                    disabled={disabledQuote}
+                    disabled={disabledRows[quote.id] ?? true}
+                    onChange={(e) => {
+                      setValidDate(e.target.value);
+                    }}
                   />
                 </td>
                 <td>{quote.Grand_Total}</td>
                 <td>
                   <button
-                    className="btn btn-outline-success me-2"
+                    className={`btn ${(disabledRows[quote.id] ?? true) ? "btn-outline-success" : "btn-danger"} me-2`}
                     onClick={() => {
-                      setDisabledQuote(!disabledQuote);
+                      setDisabledRows((prev) => ({
+                        ...prev,
+                        [quote.id]: !(disabledRows[quote.id] ?? true),
+                      }));
                     }}
                   >
-                    {disabledQuote ? "Edit" : "Cancel"}
+                    {(disabledRows[quote.id] ?? true) ? "Edit" : "Cancel"}
                   </button>
+                  {/* btn-outline-success */}
                   <button
-                    className="btn btn-outline-danger"
-                    onClick={() => {
-                      handleDelete(quote.id, quote.Subject);
+                    className={`btn ${(disabledRows[quote.id] ?? true) ? "btn-outline-danger" : "btn-warning"}`}
+                    id={`${(disabledRows[quote.id] ?? true) ? "delete_quote" : "save_quote"}`}
+                    onClick={(e) => {
+                      const quote_del_edit_id = e.target.id;
+                      quote_del_edit_id === "delete_quote"
+                        ? handleDelete(quote.id, quote.Subject)
+                        : handleSave(quote.id, quoteSubject, validDate);
                     }}
                   >
-                    ❌
+                    {(disabledRows[quote.id] ?? true) ? "Delete" : "Save"}
                   </button>
                 </td>
               </tr>
