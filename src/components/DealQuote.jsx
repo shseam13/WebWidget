@@ -22,6 +22,8 @@ export default function DealQuote() {
   const [disabledRows, setDisabledRows] = useState({});
   const [quoteSubject, setQuoteSubject] = useState("");
   const [validDate, setValidDate] = useState("");
+  const [pipeline, setPipeline] = useState("");
+  const [pipelineStageMap, setPipelineStageMap] = useState({});
   useEffect(() => {
     ZOHO.embeddedApp.on("PageLoad", function (data) {
       setRecordId(data["EntityId"][0]);
@@ -58,6 +60,7 @@ export default function DealQuote() {
 
   useEffect(() => {
     if (recordData) {
+      console.log(recordData);
       setDealName(recordData["data"][0]["Deal_Name"]);
       setDealId(recordData["data"][0]["id"]);
       setAccountId(recordData["data"][0]["Account_Name"]?.id || "");
@@ -66,6 +69,7 @@ export default function DealQuote() {
       setContactName(recordData["data"][0]["Contact_Name"]["name"]);
       setContactPhone(recordData["data"][0]["Contact_Phone"]);
       setAmount(recordData["data"][0]["Amount"]);
+      setPipeline(recordData["data"][0]["Pipeline"]);
       ZOHO.CRM.API.getRelatedRecords({
         Entity: "Deals",
         RecordID: recordData["data"][0]["id"],
@@ -79,15 +83,32 @@ export default function DealQuote() {
     }
   }, [recordData, zohoLoaded, recordId, moduleName]);
   useEffect(() => {
+    let pipeline_stage_map = {};
     if (recordData) {
       ZOHO.CRM.META.getLayouts({
-        Entity: "Quotes",
+        Entity: "Deals",
         LayoutId: "4728790000000091023",
       }).then(function (data) {
-        console.log(data);
+        const deal_information = data["layouts"][0]["sections"].find(
+          (section) => section["api_name"] === "Deal Information",
+        );
+        const deal_pipeline_info = deal_information["fields"].find(
+          (field) => field["api_name"] === "Pipeline",
+        );
+        const pipeline_picklist_values = deal_pipeline_info["pick_list_values"];
+        console.log(pipeline_picklist_values);
+        pipeline_picklist_values.forEach((element) => {
+          const pipeline = element.actual_value;
+          const stages = element["maps"][0]["pick_list_values"].map(
+            (stage) => stage.actual_value,
+          );
+          pipeline_stage_map[pipeline] = stages;
+        });
+
+        setPipelineStageMap(pipeline_stage_map);
       });
     }
-  }, [recordData]);
+  }, [recordData, zohoLoaded]);
   useEffect(() => {
     if (zohoLoaded) {
       ZOHO.CRM.API.getAllRecords({
@@ -275,10 +296,11 @@ export default function DealQuote() {
             </div>
             <div className="col-md-3">
               <label className="form-label">Stage</label>
-              <select className="form-select" id="stage" disabled>
+              <select className="form-select" id="stage" disabled={disabled}>
                 <option defaultValue={recordData["data"][0]["Stage"]}>
                   {recordData["data"][0]["Stage"]}
                 </option>
+                {console.log(pipelineStageMap)}
                 <option>Qualification</option>
                 <option>Researching</option>
                 <option>Proposal/Price Quote</option>
