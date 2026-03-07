@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ScrollDialog from "./ScrollDialog";
 import "./DealQuote.css";
+import PreLoader from "./PreLoader";
 const ZOHO = window.ZOHO;
 
 export default function DealQuote() {
@@ -24,6 +25,7 @@ export default function DealQuote() {
   const [validDate, setValidDate] = useState("");
   const [pipeline, setPipeline] = useState("");
   const [pipelineStageMap, setPipelineStageMap] = useState({});
+  const [checkedStatus, setChecked] = useState(false);
   useEffect(() => {
     ZOHO.embeddedApp.on("PageLoad", function (data) {
       setRecordId(data["EntityId"][0]);
@@ -108,7 +110,8 @@ export default function DealQuote() {
         setPipelineStageMap(pipeline_stage_map);
       });
     }
-  }, [recordData, zohoLoaded]);
+  }, [recordData]);
+
   useEffect(() => {
     if (zohoLoaded) {
       ZOHO.CRM.API.getAllRecords({
@@ -126,6 +129,8 @@ export default function DealQuote() {
     return emailRegex.test(email);
   };
   const handleDealUpdate = (e) => {
+    setDisabled(true);
+    setChecked(false);
     e.preventDefault();
     const updatedData = {
       Deal_Name: dealName,
@@ -153,7 +158,10 @@ export default function DealQuote() {
         alert("Record Updated Successfully");
       })
       .catch(function (error) {
-        console.log(error);
+        const error_code = error["data"][0]["code"];
+        if (error_code === "INVALID_DATA") {
+          alert(`Error in "${error["data"][0]["details"]["api_name"]}"`);
+        }
       });
     return;
   };
@@ -214,14 +222,9 @@ export default function DealQuote() {
       });
     return;
   };
-
-  if (!zohoLoaded) {
-    console.log(zohoLoaded);
-    return <div>Loading zoho...</div>;
-  }
   if (!recordData) {
     console.log(recordData);
-    return <div>Loading record data...</div>;
+    return <PreLoader />;
   }
   return (
     <div className="container">
@@ -284,7 +287,7 @@ export default function DealQuote() {
             <div className="col-md-3">
               <label className="form-label">Contact Phone</label>
               <input
-                type="text"
+                type="tel"
                 className="form-control"
                 id="phone_number"
                 defaultValue={contactPhone}
@@ -297,22 +300,22 @@ export default function DealQuote() {
             <div className="col-md-3">
               <label className="form-label">Stage</label>
               <select className="form-select" id="stage" disabled={disabled}>
-                <option defaultValue={recordData["data"][0]["Stage"]}>
-                  {recordData["data"][0]["Stage"]}
-                </option>
-                {console.log(pipelineStageMap)}
-                <option>Qualification</option>
-                <option>Researching</option>
-                <option>Proposal/Price Quote</option>
-                <option>Negotiate / Review</option>
-                <option>Closed Won 👍</option>
-                <option>Closed Lost 👎</option>
+                {pipelineStageMap[pipeline] &&
+                pipelineStageMap[pipeline].length > 0 ? (
+                  pipelineStageMap[pipeline].map((stage) => (
+                    <option>{stage}</option>
+                  ))
+                ) : (
+                  <option defaultValue={recordData["data"][0]["Stage"]}>
+                    {recordData["data"][0]["Stage"]}
+                  </option>
+                )}
               </select>
             </div>
             <div className="col-md-3">
               <label className="form-label">Amount</label>
               <input
-                type="text"
+                type="number"
                 className="form-control"
                 id="amount"
                 defaultValue={amount}
@@ -328,8 +331,10 @@ export default function DealQuote() {
                 <input
                   className="form-check-input"
                   type="checkbox"
+                  checked={checkedStatus}
                   required
                   onChange={(e) => {
+                    setChecked(!checkedStatus);
                     setDisabled(e.target.checked ? "" : "disabled");
                   }}
                 ></input>

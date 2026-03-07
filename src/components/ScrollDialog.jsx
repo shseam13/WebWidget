@@ -5,8 +5,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-import TextField from "@mui/material/TextField";
-import Autocomplete from "@mui/material/Autocomplete";
+
 const ZOHO = window.ZOHO;
 
 export default function ScrollDialog({
@@ -33,8 +32,8 @@ export default function ScrollDialog({
       window.alert("Please select an account to create a quote.");
     }
   };
-
-  const handleClose = (code) => {
+  const handleClose = (event, reason, code) => {
+    if (reason && reason === "backdropClick") return;
     code === 200 ? window.location.reload() : "";
     setOpen(false);
   };
